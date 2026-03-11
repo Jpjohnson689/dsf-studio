@@ -1,11 +1,11 @@
-// api/chat.js — DSF Studio backend proxy
+h// api/chat.js — DSF Studio backend proxy
 // API key stays here, never sent to the browser
 
 const VALID_USER_IDS = [
     'DATASCAN-001',
     'DATASCAN-002',
     'DATASCAN-003',
-    'JOHN-001'
+    'JOHN-001',
     'LAKEN-001',
     // Add more IDs here as you issue them to clients
     // Format: 'DATASCAN-XXX' or any string you choose
