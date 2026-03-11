@@ -570,6 +570,20 @@
 const API_URL = "/api/chat"; // Proxied through Vercel — API key stays on server
 let fields = [];
 
+      let activeUserId = null;
+
+      function validateUserId() {
+              const input = document.getElementById('userIdInput');
+              const userId = input.value.trim();
+              if (!userId) {
+                        alert('Please enter a User ID.');
+                        return;
+              }
+              activeUserId = userId;
+              document.getElementById('authGate').style.display = 'none';
+              document.getElementById('mainApp').style.display = 'block';
+      }
+
 function getHeaders() {
   const h = { 'Content-Type': 'application/json' };
   if (activeUserId) h['x-user-id'] = activeUserId;
