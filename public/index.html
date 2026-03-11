@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DSF Studio — AI-Powered Configuration Builder</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;600;700;800&display=swap');
+
+  :root {
+    --bg: #0a0d14;
+    --surface: #111520;
+    --panel: #161c2e;
+    --border: #1e2840;
+    --border-bright: #2a3a60;
+    --accent: #3b7fff;
+    --accent2: #00e5c3;
+    --accent3: #ff6b35;
+    --text: #e8edf8;
+    --muted: #6b7a9e;
+    --dim: #3a4468;
+    --success: #00c896;
+    --warning: #f5a623;
+    --code-bg: #0d1117;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(59,127,255,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(59,127,255,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app {
+    position: relative;
+    z-index: 1;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 24px 60px;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 28px 0 36px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 36px;
+  }
+
+  .logo-group { display: flex; align-items: center; gap: 14px; }
+
+  .logo-icon {
+    width: 44px; height: 44px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    box-shadow: 0 0 20px rgba(59,127,255,0.4);
+  }
+
+  .logo-text { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
+  .logo-text span { color: var(--accent2); }
+
+  .badge {
+    background: linear-gradient(135deg, rgba(0,229,195,0.15), rgba(59,127,255,0.15));
+    border: 1px solid rgba(0,229,195,0.3);
+    color: var(--accent2);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+  }
+
+  .steps {
+    display: flex;
+    margin-bottom: 36px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--surface);
+  }
+
+  .step {
+    flex: 1;
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-right: 1px solid var(--border);
+  }
+
+  .step:last-child { border-right: none; }
+  .step.active { background: linear-gradient(135deg, rgba(59,127,255,0.15), rgba(0,229,195,0.08)); }
+
+  .step-num {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    flex-shrink: 0;
+    transition: all 0.2s;
+  }
+
+  .step.active .step-num { background: var(--accent); box-shadow: 0 0 12px rgba(59,127,255,0.5); }
+  .step.done .step-num { background: var(--success); }
+
+  .step-label { font-size: 13px; font-weight: 600; color: var(--muted); }
+  .step.active .step-label { color: var(--text); }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .panel-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: rgba(255,255,255,0.02);
+  }
+
+  .panel-title { font-size: 13px; font-weight: 700; letter-spacing: 0.3px; display: flex; align-items: center; gap: 8px; }
+
+  .panel-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  .panel-dot.green { background: var(--accent2); box-shadow: 0 0 8px var(--accent2); }
+  .panel-dot.orange { background: var(--accent3); box-shadow: 0 0 8px var(--accent3); }
+
+  .panel-body { padding: 18px; flex: 1; }
+
+  textarea, input[type="text"] {
+    width: 100%;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    line-height: 1.7;
+    padding: 14px;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  textarea:focus, input[type="text"]:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(59,127,255,0.1);
+  }
+
+  .field-row {
+    display: grid;
+    grid-template-columns: 44px 1fr 1fr 110px;
+    gap: 8px;
+    margin-bottom: 8px;
+    align-items: center;
+  }
+
+  .field-row input { font-size: 12px; padding: 8px 10px; }
+
+  .field-row-header {
+    display: grid;
+    grid-template-columns: 44px 1fr 1fr 110px;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+
+  .field-row-header span {
+    font-size: 10px;
+    color: var(--dim);
+    font-family: 'JetBrains Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.2px;
+  }
+
+  .btn-primary { background: linear-gradient(135deg, var(--accent), #2563eb); color: white; box-shadow: 0 4px 20px rgba(59,127,255,0.35); }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 28px rgba(59,127,255,0.5); }
+  .btn-primary:disabled { opacity: 0.5; transform: none; cursor: not-allowed; }
+  .btn-ghost { background: var(--surface); color: var(--muted); border: 1px solid var(--border); }
+  .btn-ghost:hover { border-color: var(--border-bright); color: var(--text); }
+  .btn-sm { padding: 6px 12px; font-size: 12px; }
+  .btn-success { background: linear-gradient(135deg, var(--success), #00a376); color: white; box-shadow: 0 4px 20px rgba(0,200,150,0.3); }
+
+  .generate-bar {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+
+  .generate-bar h3 { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+  .generate-bar p { font-size: 13px; color: var(--muted); }
+
+  .code-block {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    line-height: 1.7;
+    color: #a0b0d0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    min-height: 200px;
+    overflow: auto;
+    max-height: 500px;
+    position: relative;
+  }
+
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  .status { display: flex; align-items: center; gap: 8px; font-size: 12px; font-family: 'JetBrains Mono', monospace; color: var(--muted); }
+
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--dim); transition: all 0.3s; }
+  .status-dot.active { background: var(--accent2); box-shadow: 0 0 8px var(--accent2); animation: pulse 1.2s infinite; }
+  .status-dot.done { background: var(--success); }
+
+  .chip { display: inline-flex; align-items: center; gap: 5px; background: rgba(59,127,255,0.1); border: 1px solid rgba(59,127,255,0.2); color: var(--accent); font-size: 11px; font-family: 'JetBrains Mono', monospace; padding: 3px 9px; border-radius: 20px; }
+
+  .action-row { display: flex; gap: 10px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
+
+  .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+
+  .tab { padding: 8px 16px; font-size: 12px; font-weight: 600; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; transition: all 0.2s; margin-bottom: -1px; }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  .data-preview { overflow: auto; border: 1px solid var(--border); border-radius: 8px; max-height: 200px; }
+  .data-preview table { width: 100%; border-collapse: collapse; font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+  .data-preview th { background: rgba(59,127,255,0.15); color: var(--accent); padding: 6px 10px; text-align: left; font-weight: 600; position: sticky; top: 0; white-space: nowrap; }
+  .data-preview td { padding: 5px 10px; border-top: 1px solid var(--border); color: var(--muted); white-space: nowrap; }
+
+  .copy-btn { position: absolute; top: 10px; right: 10px; background: var(--surface); border: 1px solid var(--border); color: var(--muted); font-family: 'JetBrains Mono', monospace; font-size: 11px; padding: 4px 10px; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+  .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--dim); margin-bottom: 10px; font-family: 'JetBrains Mono', monospace; }
+
+  .add-btn { display: inline-flex; align-items: center; gap: 6px; color: var(--accent); font-size: 12px; font-weight: 600; cursor: pointer; padding: 6px 0; transition: opacity 0.2s; }
+  .add-btn:hover { opacity: 0.7; }
+
+  .fields-scroll { max-height: 260px; overflow-y: auto; padding-right: 4px; }
+  .fields-scroll::-webkit-scrollbar { width: 4px; }
+  .fields-scroll::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 2px; }
+
+  .help { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+  /* Image upload */
+  .upload-zone {
+    border: 2px dashed var(--border-bright);
+    border-radius: 12px;
+    padding: 24px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    background: rgba(59,127,255,0.03);
+    margin-bottom: 12px;
+  }
+
+  .upload-zone:hover, .upload-zone.dragover {
+    border-color: var(--accent);
+    background: rgba(59,127,255,0.08);
+  }
+
+  .upload-zone input[type="file"] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer;
+    width: 100%; height: 100%; padding: 0; background: none; border: none;
+  }
+
+  .upload-zone-icon { font-size: 28px; margin-bottom: 8px; }
+  .upload-zone-title { font-size: 13px; font-weight: 700; margin-bottom: 3px; }
+  .upload-zone-sub { font-size: 11px; color: var(--muted); }
+
+  .image-preview { position: relative; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); margin-bottom: 12px; }
+  .image-preview img { width: 100%; display: block; max-height: 220px; object-fit: contain; background: #000; }
+  .image-preview .remove-img { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.75); color: white; border: none; border-radius: 50%; width: 26px; height: 26px; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+
+  .parsing-overlay { position: absolute; inset: 0; background: rgba(10,13,20,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; font-size: 13px; font-weight: 600; }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner { width: 26px; height: 26px; border: 3px solid var(--border); border-top-color: var(--accent2); border-radius: 50%; animation: spin 0.8s linear infinite; }
+
+  .divider { display: flex; align-items: center; gap: 10px; margin: 12px 0; }
+  .divider-line { flex: 1; height: 1px; background: var(--border); }
+  .divider-text { font-size: 11px; color: var(--dim); font-family: 'JetBrains Mono', monospace; }
+
+  .format-btn {
+    background: var(--surface);
+    color: var(--muted);
+    border: none;
+    border-right: 1px solid var(--border);
+    padding: 8px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .format-btn:last-child { border-right: none; }
+  .format-btn:hover { background: var(--panel); color: var(--text); }
+  .format-btn.active { background: var(--accent); color: white; }
+
+  @media (max-width: 800px) {
+    .grid { grid-template-columns: 1fr; }
+    .field-row { grid-template-columns: 38px 1fr 1fr 80px; }
+    .field-row-header { grid-template-columns: 38px 1fr 1fr 80px; }
+    .steps .step-label { display: none; }
+  }
+</style>
+</head>
+<body>
+<div id="authGate" style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg)">
+  <div style="width:100%;max-width:420px;padding:24px">
+    <div style="text-align:center;margin-bottom:32px">
+      <div style="font-size:36px;margin-bottom:12px">⚡</div>
+      <div style="font-size:28px;font-weight:800;letter-spacing:-0.5px;color:var(--text)">DSF <span style="color:var(--accent2)">Studio</span></div>
+      <div style="font-size:13px;color:var(--dim);margin-top:6px">AI-powered scanner configuration builder</div>
+    </div>
+    <div style="background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:28px">
+      <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px">Enter your User ID</div>
+      <div style="font-size:12px;color:var(--dim);margin-bottom:16px">Provided by your administrator. Contact OneBridge Labs if you need access.</div>
+      <input id="userIdInput" type="text" placeholder="e.g. DATASCAN-001" style="width:100%;box-sizing:border-box;padding:12px 14px;font-size:14px;font-family:'JetBrains Mono',monospace;font-weight:700;letter-spacing:1px;background:#0d1117;border:1px solid var(--border);border-radius:10px;color:var(--text);margin-bottom:12px"
+        onkeydown="if(event.key==='Enter') validateUserId.call(this)">
+      <button onclick="validateUserId()" style="width:100%;padding:13px;background:var(--accent);color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;transition:opacity 0.15s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">Activate</button>
+      <div id="authError" style="display:none;margin-top:12px;font-size:12px;color:var(--accent3);background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.25);border-radius:8px;padding:10px 12px"></div>
+    </div>
+    <div style="text-align:center;margin-top:20px;font-size:11px;color:var(--dim)">Powered by OneBridge Labs &nbsp;·&nbsp; datascan.com</div>
+  </div>
+</div>
+
+<div id="mainApp" style="display:none">
+<div class="app">
+
+  <header>
+    <div class="logo-group">
+      <div class="logo-icon">⚡</div>
+      <div>
+        <div class="logo-text">DSF <span>Studio</span></div>
+        <div class="help" style="margin-top:2px">AI-powered scanner configuration builder &nbsp;·&nbsp; Powered by OneBridge Labs</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <div class="badge">FOR DATASCAN</div>
+      <div class="badge" style="color:var(--accent3);border-color:rgba(255,107,53,0.3);background:rgba(255,107,53,0.1)">AI POWERED</div>
+    </div>
+  </header>
+
+
+  <div class="steps">
+    <div class="step active" id="step1-tab"><div class="step-num">1</div><div class="step-label">File Spec</div></div>
+    <div class="step" id="step2-tab"><div class="step-num">2</div><div class="step-label">Sample Data</div></div>
+    <div class="step" id="step3-tab"><div class="step-num">3</div><div class="step-label">Generate Rules</div></div>
+    <div class="step" id="step4-tab"><div class="step-num">4</div><div class="step-label">Review & Export</div></div>
+  </div>
+
+  <!-- STEP 1 -->
+  <div id="step1">
+    <div class="grid">
+
+      <!-- Left: manual field entry -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title"><div class="panel-dot"></div>Column Mapping Fields</div>
+          <button class="btn btn-ghost btn-sm" onclick="loadExample()">Load Example</button>
+        </div>
+        <div class="panel-body">
+          <div class="section-label">Program Name</div>
+          <input type="text" id="programName" placeholder="e.g. SKU_by_Store" style="margin-bottom:16px">
+
+          <div class="section-label">Field Definitions</div>
+          <div class="field-row-header">
+            <span>#</span>
+            <span>Client Name</span>
+            <span>Datascan Name</span>
+            <span>Notes</span>
+          </div>
+          <div class="fields-scroll" id="fieldsContainer"></div>
+          <div class="add-btn" onclick="addField()">＋ Add Field</div>
+        </div>
+      </div>
+
+      <!-- Right: image upload + paste -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title"><div class="panel-dot green"></div>Upload Spec or Paste Text</div>
+          <span class="chip">AI Auto-extract</span>
+        </div>
+        <div class="panel-body">
+
+          <div class="section-label">📸 Upload a photo or screenshot of the spec</div>
+          <div class="upload-zone" id="uploadZone"
+               ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+            <input type="file" accept="image/*" onchange="handleImageUpload(event)" id="fileInput">
+            <div class="upload-zone-icon">🖼️</div>
+            <div class="upload-zone-title">Tap or drag to upload</div>
+            <div class="upload-zone-sub">Any image of the spec — AI will extract all fields automatically</div>
+          </div>
+
+          <div id="imagePreviewContainer"></div>
+
+          <div class="divider">
+            <div class="divider-line"></div>
+            <div class="divider-text">OR</div>
+            <div class="divider-line"></div>
+          </div>
+
+          <div class="section-label">📋 Paste raw spec text</div>
+          <textarea id="rawSpec" rows="7" placeholder="#   Client Name    Datascan Name
+1   Sku            xref_barcode
+2   xref_barcode   xref_barcode
+3   Description    description
+..."></textarea>
+          <div class="action-row" style="margin-top:8px">
+            <button class="btn btn-ghost btn-sm" onclick="parseRawSpec()">🤖 Auto-parse into fields</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end">
+      <button class="btn btn-primary" onclick="goToStep(2)">Next: Sample Data →</button>
+    </div>
+  </div>
+
+  <!-- STEP 2 -->
+  <div id="step2" style="display:none">
+    <div class="panel" style="margin-bottom:20px">
+      <div class="panel-header">
+        <div class="panel-title"><div class="panel-dot orange"></div>Sample Raw File Data</div>
+        <span class="chip">Optional but recommended</span>
+      </div>
+      <div class="panel-body">
+        <div class="help" style="margin-bottom:12px">Paste 3–10 raw rows from the actual flat file. Helps AI write more accurate rules. You can skip this if you don't have sample data yet.</div>
+        <textarea id="sampleData" rows="10" placeholder="Paste raw file rows here..."></textarea>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between">
+      <button class="btn btn-ghost" onclick="goToStep(1)">← Back</button>
+      <button class="btn btn-primary" onclick="goToStep(3)">Next: Generate →</button>
+    </div>
+  </div>
+
+  <!-- STEP 3 -->
+  <div id="step3" style="display:none">
+    <div class="generate-bar">
+      <div class="info">
+        <h3>Ready to Generate</h3>
+        <p>AI will analyze your spec and write the complete transformation rules.</p>
+      </div>
+      <button class="btn btn-primary" id="generateBtn" onclick="generateRules()">⚡ Generate Rules</button>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title"><div class="panel-dot" id="outputDot"></div>AI-Generated Rules</div>
+        <div class="status"><div class="status-dot" id="statusDot"></div><span id="statusText">Waiting...</span></div>
+      </div>
+      <div class="panel-body" style="position:relative">
+        <div class="tabs">
+          <div class="tab active" onclick="switchTab('rules')">Full DSF File</div>
+          <div class="tab" onclick="switchTab('validation')">combined_dsf</div>
+          <div class="tab" onclick="switchTab('summary')">im_idsf</div>
+        </div>
+        <div class="tab-content active" id="tab-rules">
+          <div style="position:relative">
+            <div class="code-block" id="rulesOutput">// Rules will appear here after generation...</div>
+            <button class="copy-btn" onclick="copyOutput('rulesOutput')">Copy</button>
+          </div>
+        </div>
+        <div class="tab-content" id="tab-validation">
+          <div class="code-block" id="validationOutput">// Validation checks will appear here...</div>
+        </div>
+        <div class="tab-content" id="tab-summary">
+          <div id="summaryOutput" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted)">Summary will appear after generation...</div>
+        </div>
+        <div class="action-row">
+          <button class="btn btn-ghost btn-sm" onclick="goToStep(4)" id="reviewBtn" style="display:none">Review & Export →</button>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:10px"><button class="btn btn-ghost" onclick="goToStep(2)">← Back</button></div>
+  </div>
+
+  <!-- STEP 4 -->
+  <div id="step4" style="display:none">
+    <div class="panel" style="margin-bottom:20px">
+      <div class="panel-header">
+        <div class="panel-title"><div class="panel-dot green"></div>Review & Export</div>
+      </div>
+      <div class="panel-body">
+        <div class="tabs">
+          <div class="tab active" onclick="switchExportTab('final')">Final Rules</div>
+          <div class="tab" onclick="switchExportTab('notes')">Review Notes</div>
+        </div>
+        <div class="tab-content active" id="export-tab-final">
+          <textarea id="finalRules" rows="18" style="font-family:'JetBrains Mono',monospace;font-size:12px"></textarea>
+          <div class="help" style="margin-top:6px">Make any manual adjustments before exporting.</div>
+          <div class="action-row" style="margin-top:14px">
+            <div style="display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;flex-shrink:0">
+              <button class="format-btn active" onclick="setFormat('txt')" id="fmt-txt">.TXT</button>
+              <button class="format-btn" onclick="setFormat('py')" id="fmt-py">.PY</button>
+              <button class="format-btn" onclick="setFormat('csv')" id="fmt-csv">.CSV</button>
+            </div>
+            <button class="btn btn-success" onclick="exportRules()">⬇ Export File</button>
+            <button class="btn btn-ghost btn-sm" onclick="copyFinal()">Copy to Clipboard</button>
+          </div>
+        </div>
+        <div class="tab-content" id="export-tab-notes">
+          <div class="section-label" style="margin-bottom:8px">AI Review Notes</div>
+          <div id="aiNotes" class="code-block" style="min-height:120px;color:var(--muted)">Notes will appear after generation...</div>
+        </div>
+      </div>
+    </div>
+    <button class="btn btn-ghost" onclick="goToStep(3)">← Back to Generate</button>
+  </div>
+
+</div>
+
+<script>
+const API_URL = "/api/chat"; // Proxied through Vercel — API key stays on server
+let fields = [];
+
+function getHeaders() {
+  const h = { 'Content-Type': 'application/json' };
+  if (activeUserId) h['x-user-id'] = activeUserId;
+  return h;
+}
+
+let uploadedImageB64 = null;
+let uploadedImageType = null;
+
+function addField(num='', clientName='', datascanName='', transform='') {
+  const id = Date.now() + Math.random();
+  fields.push({ id, num, clientName, datascanName, transform });
+  renderFields();
+}
+
+function removeField(id) {
+  fields = fields.filter(f => f.id !== id);
+  renderFields();
+}
+
+function renderFields() {
+  const c = document.getElementById('fieldsContainer');
+  c.innerHTML = '';
+  fields.forEach((f, i) => {
+    const row = document.createElement('div');
+    row.className = 'field-row';
+    row.innerHTML = `
+      <input type="text" placeholder="${i+1}" value="${f.num}" onchange="updateField(${f.id},'num',this.value)">
+      <input type="text" placeholder="Client name" value="${f.clientName}" onchange="updateField(${f.id},'clientName',this.value)">
+      <input type="text" placeholder="Datascan name" value="${f.datascanName}" onchange="updateField(${f.id},'datascanName',this.value)">
+      <div style="display:flex;gap:4px;align-items:center">
+        <input type="text" placeholder="notes..." value="${f.transform}" onchange="updateField(${f.id},'transform',this.value)" style="flex:1;min-width:0">
+        <span onclick="removeField(${f.id})" style="color:var(--dim);cursor:pointer;font-size:18px;line-height:1;padding:0 2px;flex-shrink:0">×</span>
+      </div>`;
+    c.appendChild(row);
+  });
+}
+
+function updateField(id, key, val) {
+  const f = fields.find(x => x.id === id);
+  if (f) f[key] = val;
+}
+
+function loadExample() {
+  document.getElementById('programName').value = 'SKU_by_Store';
+  fields = [];
+  [
+    ['1','Sku','xref_barcode',''],
+    ['2','xref_barcode','xref_barcode',''],
+    ['3','Description','description','right trim'],
+    ['4','Price','price','2 implied decimals'],
+    ['5','Quantity','quantity','integer'],
+    ['6','Store_Number','store_number','left 2 trim'],
+    ['7','Dept_Number','dept_number','integer'],
+    ['8','Source_Flag','source_flag','string(1)'],
+  ].forEach(r => addField(...r));
+  document.getElementById('sampleData').value =
+`00214 06845231 WIDGET LARGE BLUE      29999 023 01 S
+00214 07291234 ANOTHER PRODUCT         14999 018 02 S
+00315 09123456 SMALL ITEM               4999 005 01 S`;
+}
+
+// Image upload
+function handleDragOver(e) { e.preventDefault(); document.getElementById('uploadZone').classList.add('dragover'); }
+function handleDragLeave(e) { document.getElementById('uploadZone').classList.remove('dragover'); }
+function handleDrop(e) { e.preventDefault(); document.getElementById('uploadZone').classList.remove('dragover'); const f = e.dataTransfer.files[0]; if (f && f.type.startsWith('image/')) processImageFile(f); }
+function handleImageUpload(e) { const f = e.target.files[0]; if (f) processImageFile(f); }
+
+function resizeImage(dataUrl, maxPx) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', 0.85));
+    };
+    img.onerror = reject;
+    img.src = dataUrl;
+  });
+}
+
+function processImageFile(file) {
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const originalDataUrl = e.target.result;
+
+    document.getElementById('imagePreviewContainer').innerHTML = `
+      <div class="image-preview" id="imgPreview">
+        <img src="${originalDataUrl}" alt="Spec preview">
+        <button class="remove-img" onclick="clearImage()">×</button>
+        <div class="parsing-overlay" id="parsingOverlay">
+          <div class="spinner"></div>
+          <span>Resizing & reading spec...</span>
+        </div>
+      </div>`;
+
+    try {
+      const resized = await resizeImage(originalDataUrl, 1200);
+      uploadedImageB64 = resized.split(',')[1];
+      uploadedImageType = 'image/jpeg';
+    } catch(err) {
+      uploadedImageB64 = originalDataUrl.split(',')[1];
+      uploadedImageType = file.type;
+    }
+
+    await parseImageSpec(uploadedImageB64, uploadedImageType);
+    const overlay = document.getElementById('parsingOverlay');
+    if (overlay) overlay.remove();
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearImage() {
+  uploadedImageB64 = null; uploadedImageType = null;
+  document.getElementById('imagePreviewContainer').innerHTML = '';
+  document.getElementById('fileInput').value = '';
+}
+
+async function parseImageSpec(b64, mediaType) {
+  const overlay = document.getElementById('parsingOverlay');
+
+  function showOverlayError(msg) {
+    if (overlay) {
+      overlay.innerHTML = `<span style="color:#ff6b35;font-size:12px;padding:0 16px;text-align:center">⚠️ ${msg}</span>`;
+      setTimeout(() => { if (overlay && overlay.parentNode) overlay.remove(); }, 4000);
+    }
+  }
+
+  try {
+    // Ensure media type is valid for Anthropic API
+    const validTypes = ['image/jpeg','image/png','image/gif','image/webp'];
+    const safeType = validTypes.includes(mediaType) ? mediaType : 'image/jpeg';
+
+    const payload = {
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1500,
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'image',
+            source: { type: 'base64', media_type: safeType, data: b64 }
+          },
+          {
+            type: 'text',
+            text: `Look at this flat file spec table. Extract all field rows and return ONLY this JSON structure with no other text:
+{"programName":"","fields":[{"num":"001","clientName":"Material","datascanName":"sku","transform":""}]}
+Use the actual values from the table. num = the # column. clientName = Client Name column. datascanName = first value in Datascan Name column. transform = Notes column or extra datascan values. Extract every visible row.`
+          }
+        ]
+      }]
+    };
+
+    console.log('Sending image parse request...');
+    const resp = await fetch(API_URL, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(payload)
+    });
+
+    // Read raw text first for debugging
+    const rawText = await resp.text();
+    console.log('Raw API response:', rawText.slice(0, 500));
+
+    let data;
+    try {
+      data = JSON.parse(rawText);
+    } catch(parseErr) {
+      console.error('Response was not JSON:', rawText.slice(0, 200));
+      showOverlayError('API returned unexpected response. Try the paste text option below.');
+      return;
+    }
+
+    // Handle API-level errors
+    if (data.error) {
+      console.error('API error:', data.error);
+      showOverlayError(`API error: ${data.error.message || 'Unknown error'}. Try paste text below.`);
+      return;
+    }
+
+    // Extract text content
+    let text = '';
+    for (const block of (data.content || [])) {
+      if (block.type === 'text') { text += block.text; }
+    }
+    console.log('Model response text:', text.slice(0, 300));
+
+    if (!text) {
+      showOverlayError('No response text received. Try paste text below.');
+      return;
+    }
+
+    // Find JSON object anywhere in response (handles markdown fences, preamble, etc.)
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.error('No JSON object found in:', text);
+      showOverlayError('Could not parse response. Try paste text below.');
+      return;
+    }
+
+    const parsed = JSON.parse(jsonMatch[0]);
+    console.log('Parsed fields:', parsed.fields?.length, 'fields found');
+
+    if (parsed.programName && !document.getElementById('programName').value) {
+      document.getElementById('programName').value = parsed.programName;
+    }
+
+    if (parsed.fields?.length) {
+      fields = parsed.fields.map(f => ({ ...f, id: Date.now() + Math.random() }));
+      renderFields();
+      // Remove overlay on success
+      if (overlay && overlay.parentNode) overlay.remove();
+    } else {
+      showOverlayError('No fields found in image. Try paste text below.');
+    }
+
+  } catch(e) {
+    console.error('Image parse exception:', e.message, e);
+    showOverlayError('Unexpected error. Try paste text below.');
+  }
+}
+
+async function parseRawSpec() {
+  const raw = document.getElementById('rawSpec').value.trim();
+  if (!raw) { alert('Paste some spec text first.'); return; }
+  const btn = event.target;
+  btn.textContent = '⏳ Parsing...';
+  btn.disabled = true;
+  try {
+    const resp = await fetch(API_URL, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: 'Extract field definitions from flat file spec text. Return ONLY a JSON array, no markdown: [{"num":"#","clientName":"client name","datascanName":"datascan name","transform":"notes"}]',
+        messages: [{ role: 'user', content: `Extract fields:\n\n${raw}` }]
+      })
+    });
+    const data = await resp.json();
+    const text = data.content?.[0]?.text || '[]';
+    const parsed = JSON.parse(text.replace(/```json|```/g,'').trim());
+    fields = parsed.map(f => ({ ...f, id: Date.now() + Math.random() }));
+    renderFields();
+    document.getElementById('rawSpec').value = '';
+  } catch(e) { alert('Could not parse. Try again.'); }
+  btn.textContent = '🤖 Auto-parse into fields';
+  btn.disabled = false;
+}
+
+function goToStep(n) {
+  [1,2,3,4].forEach(i => {
+    document.getElementById(`step${i}`).style.display = i === n ? 'block' : 'none';
+    const tab = document.getElementById(`step${i}-tab`);
+    tab.classList.toggle('active', i === n);
+    tab.classList.toggle('done', i < n);
+  });
+}
+
+function switchTab(name) {
+  ['rules','validation','summary'].forEach(t => document.getElementById(`tab-${t}`).classList.toggle('active', t === name));
+  document.querySelectorAll('#step3 .tab').forEach((t,i) => t.classList.toggle('active', ['rules','validation','summary'][i] === name));
+}
+
+function switchExportTab(name) {
+  ['final','notes'].forEach(t => document.getElementById(`export-tab-${t}`).classList.toggle('active', t === name));
+  document.querySelectorAll('#step4 .tab').forEach((t,i) => t.classList.toggle('active', ['final','notes'][i] === name));
+}
+
+async function generateRules() {
+  const programName = document.getElementById('programName').value || 'program';
+  const sampleData = document.getElementById('sampleData').value.trim();
+  if (fields.length === 0) { alert('Add at least one field first.'); return; }
+
+  const btn = document.getElementById('generateBtn');
+  btn.disabled = true; btn.textContent = '⏳ Generating...';
+  const dot = document.getElementById('statusDot');
+  const statusText = document.getElementById('statusText');
+  dot.className = 'status-dot active';
+  statusText.textContent = 'AI is writing rules...';
+  document.getElementById('rulesOutput').textContent = '';
+
+  const fieldnames = fields.map(f => f.datascanName).filter(Boolean).join(',');
+  const fieldSpec = fields.map(f =>
+    `  #${f.num||'?'} | Client: "${f.clientName}" → Datascan: "${f.datascanName}"${f.transform ? ' | Notes: '+f.transform : ''}`
+  ).join('\n');
+
+  const prompt = `You are an expert at writing Datascan Scanner Format (DSF) configuration files for retail scanner systems.
+
+Program: ${programName}
+Field count: ${fields.length}
+Field Mapping (field # is the source column position):
+${fieldSpec}
+${sampleData ? `\nSample raw data rows:\n${sampleData}` : ''}
+
+Generate a complete Datascan DSF .txt configuration file. Use EXACTLY this format — no deviations:
+
+=== DSF FILE ===
+# file: release/${programName.toLowerCase().replace(/\s+/g,'_')}.txt
+$encoding=utf-8
+
+$delimiter=\\t
+$escape=false
+$strictcolumns=${fields.length}
+$fieldnames=${fieldnames}
+$hasheader=True
+
+[validation filter rules - one per line using format: fieldname:NotContains=E+ or fieldname:Matches=pattern, only for fields that need it]
+
+>combined_dsf
+[field mappings using: datascanname:source(N) for direct copy, datascanname:truncate(N) for text fields that need trimming, datascanname:literal(value) for hardcoded values, datascanname:BarcodeSet(N,"\\t") for barcode fields]
+
+>im_idsf /header=false
+[same fields plus scanner-specific fields: scanner_description:truncate(N), scanner_sku:literal(), scanner_retail:literal(0.00), may_use_multi_qty:literal(0), must_prompt_for_retail:literal(0), require_post_count_balance:literal(0), extra_data_is_required:literal(0), message_lookuptable_number:literal(0), accept_item_into_inventory:literal(1), action_code:literal()]
+
+=== REVIEW NOTES ===
+Brief notes on any assumptions made.`;
+
+  try {
+    const resp = await fetch(API_URL, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1500, messages: [{ role: 'user', content: prompt }] })
+    });
+    const data = await resp.json();
+    const fullText = data.content?.[0]?.text || '# No output.';
+
+    const get = (pattern, fallback='') => { const m = fullText.match(pattern); return m ? m[1].trim() : fallback; };
+    const dsfFile = get(/=== DSF FILE ===([\s\S]*?)(?:=== REVIEW NOTES|$)/, fullText);
+    const notes = get(/=== REVIEW NOTES ===([\s\S]*?)$/);
+
+    // Split DSF into sections for tabs
+    const combined = get(/>(combined_dsf[\s\S]*?)(?:>im_idsf|$)/, dsfFile);
+    const imidsf = get(/(>im_idsf[\s\S]*)$/, dsfFile);
+
+    document.getElementById('rulesOutput').textContent = dsfFile || fullText;
+    document.getElementById('validationOutput').textContent = combined || '# No combined_dsf section';
+    document.getElementById('summaryOutput').innerHTML = `<pre style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);white-space:pre-wrap">${imidsf || '# No im_idsf section'}</pre>`;
+    document.getElementById('aiNotes').textContent = notes || 'No notes.';
+    document.getElementById('finalRules').value = dsfFile || fullText;
+
+    dot.className = 'status-dot done';
+    statusText.textContent = 'Complete';
+    document.getElementById('reviewBtn').style.display = 'inline-flex';
+  } catch(e) {
+    document.getElementById('rulesOutput').textContent = `# Error: ${e.message}`;
+    dot.className = 'status-dot'; statusText.textContent = 'Error';
+  }
+
+  btn.disabled = false; btn.textContent = '⚡ Regenerate';
+}
+
+function renderMarkdownTable(md) {
+  if (!md) return '<span style="color:var(--dim)">No summary</span>';
+  const lines = md.split('\n').filter(l => l.trim());
+  let html = '<div class="data-preview"><table>';
+  lines.forEach((line, i) => {
+    if (line.includes('---')) return;
+    const cells = line.split('|').filter(c => c.trim());
+    const tag = i === 0 ? 'th' : 'td';
+    html += `<tr>${cells.map(c => `<${tag}>${c.trim()}</${tag}>`).join('')}</tr>`;
+  });
+  return html + '</table></div>';
+}
+
+function copyOutput(id) {
+  navigator.clipboard.writeText(document.getElementById(id).textContent).then(() => {
+    const btn = event.target; btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 1500);
+  });
+}
+
+function copyFinal() {
+  navigator.clipboard.writeText(document.getElementById('finalRules').value).then(() => {
+    const btn = event.target; btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy to Clipboard', 1500);
+  });
+}
+
+let exportFormat = 'txt';
+
+function setFormat(fmt) {
+  exportFormat = fmt;
+  ['txt','py','csv'].forEach(f => {
+    document.getElementById(`fmt-${f}`).classList.toggle('active', f === fmt);
+  });
+}
+
+function exportRules() {
+  const name = document.getElementById('programName').value || 'program';
+  const raw = document.getElementById('finalRules').value;
+  const date = new Date().toISOString().slice(0,10);
+
+  let content = raw;
+  let filename = `${name}_rules_${date}.${exportFormat}`;
+  let mimeType = 'text/plain';
+
+  if (exportFormat === 'csv') {
+    // Convert field mappings to CSV: #, Client Name, Datascan Name, Rule
+    const lines = ['#,Client Name,Datascan Name,Rule'];
+    fields.forEach(f => {
+      const rule = f.transform || 'source';
+      lines.push(`${f.num},"${f.clientName}","${f.datascanName}","${rule}"`);
+    });
+    content = lines.join('\n');
+    mimeType = 'text/csv';
+  } else if (exportFormat === 'py') {
+    // Wrap in Python comment block header
+    content = `#!/usr/bin/env python3\n# ${name.toUpperCase()} - Datascan Transformation Rules\n# Generated: ${new Date().toLocaleString()}\n# Format: Datascan DSF configuration\n\nDSF_CONFIG = """\n${raw}\n"""`;
+  }
+
+  const a = Object.assign(document.createElement('a'), {
+    href: URL.createObjectURL(new Blob([content], { type: mimeType })),
+    download: filename
+  });
+  a.click();
+}
+
+loadExample();
+</script>
+</div>
+</body>
+</html>
